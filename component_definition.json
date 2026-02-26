@@ -1,0 +1,38 @@
+{
+    "directory": "hub_control",
+    "execute_function": "python hub_federate.py",
+    "static_inputs": [],
+    "dynamic_inputs": [
+        {
+            "type": "",
+            "port_id": "sub_c0",
+            "optional": true
+        },
+        {
+            "type": "",
+            "port_id": "sub_c1",
+            "optional": true
+        },
+        {
+            "type": "",
+            "port_id": "sub_c2",
+            "optional": true
+        },
+        {
+            "type": "",
+            "port_id": "sub_c3",
+            "optional": true
+        },
+        {
+            "type": "",
+            "port_id": "sub_c4",
+            "optional": true
+        }
+    ],
+    "dynamic_outputs": [
+        {
+            "type": "",
+            "port_id": "pv_set"
+        }
+    ]
+}
