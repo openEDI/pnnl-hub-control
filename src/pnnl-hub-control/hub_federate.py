@@ -9,11 +9,12 @@ from oedisi.types.data_types import (
     MeasurementArray,
     EquipmentNodeArray,
     CommandList,
-    Command
+    Command,
 )
 import xarray as xr
 import numpy as np
 from pydantic import BaseModel
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.DEBUG)
@@ -52,17 +53,12 @@ class ComponentParameters(BaseModel):
     t_steps: int
 
 
-class StaticConfig(object):
-    name: str
-    t_steps: int
-
-
 class Subscriptions(object):
-    c0: CommandList
-    c1: CommandList
-    c2: CommandList
-    c3: CommandList
-    c4: CommandList
+    c0: h.HelicsInput
+    c1: h.HelicsInput
+    c2: h.HelicsInput
+    c3: h.HelicsInput
+    c4: h.HelicsInput
 
 
 class HubFederate(object):
@@ -86,13 +82,15 @@ class HubFederate(object):
             self.inputs = json.load(file)
 
     def load_static_inputs(self):
-        self.static = StaticConfig()
         path = Path(__file__).parent / "static_inputs.json"
         with open(path, "r", encoding="UTF-8") as file:
             config = json.load(file)
 
-        self.static.name = config["name"]
-        self.static.t_steps = config["number_of_timesteps"]
+        self.static = ComponentParameters(
+            name=config["name"],
+            max_itr=config["max_itr"],
+            t_steps=config["t_steps"],
+        )
 
     def initilize(self, broker_config) -> None:
         self.info = h.helicsCreateFederateInfo()
@@ -106,29 +104,19 @@ class HubFederate(object):
         # h.helicsFederateInfoSetTimeProperty(self.info, h.helics_property_time_delta, 0.01)
         self.fed = h.helicsCreateValueFederate(self.static.name, self.info)
         # h.helicsFederateSetFlagOption(self.fed, h.helics_flag_slow_responding, True)
-        h.helicsFederateSetTimeProperty(
-            self.fed, h.HELICS_PROPERTY_TIME_PERIOD, 1)
+        h.helicsFederateSetTimeProperty(self.fed, h.HELICS_PROPERTY_TIME_PERIOD, 1)
 
     def register_subscription(self) -> None:
-        self.sub.c0 = self.fed.register_subscription(
-            self.inputs["sub_c0"], ""
-        )
-        self.sub.c1 = self.fed.register_subscription(
-            self.inputs["sub_c1"], ""
-        )
-        self.sub.c2 = self.fed.register_subscription(
-            self.inputs["sub_c2"], ""
-        )
-        self.sub.c3 = self.fed.register_subscription(
-            self.inputs["sub_c3"], ""
-        )
-        self.sub.c4 = self.fed.register_subscription(
-            self.inputs["sub_c4"], ""
-        )
+        self.sub.c0 = self.fed.register_subscription(self.inputs["sub_c0"], "")
+        self.sub.c1 = self.fed.register_subscription(self.inputs["sub_c1"], "")
+        self.sub.c2 = self.fed.register_subscription(self.inputs["sub_c2"], "")
+        self.sub.c3 = self.fed.register_subscription(self.inputs["sub_c3"], "")
+        self.sub.c4 = self.fed.register_subscription(self.inputs["sub_c4"], "")
 
     def register_publication(self) -> None:
         self.pub_commands = self.fed.register_publication(
-            "pv_set", h.HELICS_DATA_TYPE_STRING, "")
+            "pub_c", h.HELICS_DATA_TYPE_STRING, ""
+        )
 
     def run(self) -> None:
         logger.info(f"Federate connected: {datetime.now()}")
@@ -137,7 +125,8 @@ class HubFederate(object):
 
         # setting up time properties
         update_interval = h.helicsFederateGetTimeProperty(
-            self.fed, h.HELICS_PROPERTY_TIME_PERIOD)
+            self.fed, h.HELICS_PROPERTY_TIME_PERIOD
+        )
         logger.debug(f"update interval: {update_interval}")
 
         commands = []
@@ -201,10 +190,10 @@ class HubFederate(object):
 
 
 def run_simulator(broker_config: BrokerConfig):
-    #    schema = ComponentParameters.schema_json(indent=2)
-    #    with open("./hub_control/hub_control_schema.json", "w") as f:
-    #        f.write(schema)
-    #
+    schema = ComponentParameters.schema_json(indent=2)
+    with open("./schema.json", "w") as f:
+        f.write(schema)
+
     sfed = HubFederate(broker_config)
     sfed.run()
 

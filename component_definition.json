@@ -4,35 +4,35 @@
     "static_inputs": [],
     "dynamic_inputs": [
         {
-            "type": "",
+            "type": "CommandList",
             "port_id": "sub_c0",
             "optional": true
         },
         {
-            "type": "",
+            "type": "CommandList",
             "port_id": "sub_c1",
             "optional": true
         },
         {
-            "type": "",
+            "type": "CommandList",
             "port_id": "sub_c2",
             "optional": true
         },
         {
-            "type": "",
+            "type": "CommandList",
             "port_id": "sub_c3",
             "optional": true
         },
         {
-            "type": "",
+            "type": "CommandList",
             "port_id": "sub_c4",
             "optional": true
         }
     ],
     "dynamic_outputs": [
         {
-            "type": "",
-            "port_id": "pv_set"
+            "type": "CommandList",
+            "port_id": "pub_c"
         }
     ]
 }

@@ -7,11 +7,6 @@ This component provides:
 
 __version__ = "0.1.0"
 
-from .hub_federate import ComponentParameters, StaticConfig, HubFederate
+from .hub_federate import ComponentParameters, HubFederate
 
-__all__ = [
-    "__version__",
-    "ComponentParameters",
-    "StaticConfig",
-    "HubFederate"
-]
+__all__ = ["__version__", "ComponentParameters", "HubFederate"]

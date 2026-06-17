@@ -12,7 +12,7 @@ from oedisi.types.data_types import EquipmentNodeArray, MeasurementArray
 # Import with helics mocked (conftest patches sys.modules)
 from hub_federate import (
     HubFederate,
-    StaticConfig,
+    ComponentParameters,
     Subscriptions,
     eqarray_to_xarray,
     measurement_to_xarray,
@@ -37,9 +37,7 @@ class TestEqarrayToXarray:
         assert result.dims == ("ids",)
 
     def test_eqarray_to_xarray_empty(self):
-        eq = EquipmentNodeArray(
-            ids=[], equipment_ids=[], values=[], units="MW"
-        )
+        eq = EquipmentNodeArray(ids=[], equipment_ids=[], values=[], units="MW")
         result = eqarray_to_xarray(eq)
         assert isinstance(result, xr.DataArray)
         assert len(result.data) == 0
@@ -113,7 +111,7 @@ class TestHubFederateLoadStaticInputs:
 
     def test_load_static_inputs_happy_path(self, tmp_path):
         hub = self._make_instance()
-        config = {"name": "test_fed", "number_of_timesteps": 10}
+        config = {"name": "test_fed", "t_steps": 1, "max_itr": 10}
         (tmp_path / "static_inputs.json").write_text(json.dumps(config))
 
         with patch("hub_federate.Path") as MockPath:
@@ -121,7 +119,8 @@ class TestHubFederateLoadStaticInputs:
             hub.load_static_inputs()
 
         assert hub.static.name == "test_fed"
-        assert hub.static.t_steps == 10
+        assert hub.static.t_steps == 1
+        assert hub.static.max_itr == 10
 
     def test_load_static_inputs_missing_file(self, tmp_path):
         hub = self._make_instance()
@@ -192,8 +191,11 @@ class TestHubFederateLoadComponentDefinition:
 class TestHubFederateInitialize:
     def test_initialize_creates_federate(self, mock_helics):
         hub = object.__new__(HubFederate)
-        hub.static = StaticConfig()
-        hub.static.name = "test_fed"
+        hub.static = ComponentParameters(
+            name="test_fed",
+            t_steps=1,
+            max_itr=10,
+        )
 
         import hub_federate
 
@@ -233,9 +235,7 @@ class TestHubFederateRegisterSubscription:
 
         assert hub.fed.register_subscription.call_count == 5
         for key in ("sub_c0", "sub_c1", "sub_c2", "sub_c3", "sub_c4"):
-            hub.fed.register_subscription.assert_any_call(
-                hub_input_mapping[key], ""
-            )
+            hub.fed.register_subscription.assert_any_call(hub_input_mapping[key], "")
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +254,7 @@ class TestHubFederateRegisterPublication:
             hub.register_publication()
 
         hub.fed.register_publication.assert_called_once_with(
-            "pv_set", mock_helics.HELICS_DATA_TYPE_STRING, ""
+            "pub_c", mock_helics.HELICS_DATA_TYPE_STRING, ""
         )
 
 
@@ -270,8 +270,11 @@ class TestHubFederateRun:
         sub_configs: dict mapping c0-c4 to (is_updated: bool, json_data: list)
         """
         hub = object.__new__(HubFederate)
-        hub.static = StaticConfig()
-        hub.static.t_steps = 0
+        hub.static = ComponentParameters(
+            name="test_fed",
+            t_steps=0,
+            max_itr=10,
+        )
         hub.sub = Subscriptions()
         hub.fed = MagicMock()
         hub.pub_commands = MagicMock()
@@ -289,16 +292,16 @@ class TestHubFederateRun:
         import hub_federate
 
         command_data = [{"id": "x", "value": 1}]
-        sub_configs = {
-            f"c{i}": (True, command_data) for i in range(5)
-        }
+        sub_configs = {f"c{i}": (True, command_data) for i in range(5)}
 
         # Grant time 1 first, then 2 (exceeds t_steps=1 on next check)
         granted_times = iter([1, 2])
 
         with patch.object(hub_federate, "h", mock_helics):
             mock_helics.helicsFederateGetTimeProperty.return_value = 1.0
-            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(granted_times)
+            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(
+                granted_times
+            )
 
             hub = self._setup_hub(mock_helics, sub_configs)
             hub.stop = MagicMock()
@@ -326,7 +329,9 @@ class TestHubFederateRun:
 
         with patch.object(hub_federate, "h", mock_helics):
             mock_helics.helicsFederateGetTimeProperty.return_value = 1.0
-            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(granted_times)
+            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(
+                granted_times
+            )
 
             hub = self._setup_hub(mock_helics, sub_configs)
             hub.stop = MagicMock()
@@ -344,7 +349,9 @@ class TestHubFederateRun:
 
         with patch.object(hub_federate, "h", mock_helics):
             mock_helics.helicsFederateGetTimeProperty.return_value = 1.0
-            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(granted_times)
+            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(
+                granted_times
+            )
 
             hub = self._setup_hub(mock_helics, sub_configs)
             hub.stop = MagicMock()
@@ -361,7 +368,9 @@ class TestHubFederateRun:
 
         with patch.object(hub_federate, "h", mock_helics):
             mock_helics.helicsFederateGetTimeProperty.return_value = 1.0
-            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(granted_times)
+            mock_helics.helicsFederateRequestTime.side_effect = lambda fed, t: next(
+                granted_times
+            )
 
             hub = self._setup_hub(mock_helics, sub_configs)
             hub.stop = MagicMock()
@@ -394,12 +403,8 @@ class TestHubFederateStop:
         disconnect_idx = next(
             i for i, c in enumerate(calls) if c[0] == "helicsFederateDisconnect"
         )
-        free_idx = next(
-            i for i, c in enumerate(calls) if c[0] == "helicsFederateFree"
-        )
-        close_idx = next(
-            i for i, c in enumerate(calls) if c[0] == "helicsCloseLibrary"
-        )
+        free_idx = next(i for i, c in enumerate(calls) if c[0] == "helicsFederateFree")
+        close_idx = next(i for i, c in enumerate(calls) if c[0] == "helicsCloseLibrary")
         assert disconnect_idx < free_idx < close_idx
 
 
@@ -415,16 +420,21 @@ class TestRunSimulator:
         # Write config files needed by __init__
         static = {"name": "test_hub", "number_of_timesteps": 5}
         inputs = {
-            "sub_c0": "a/p0", "sub_c1": "a/p1", "sub_c2": "a/p2",
-            "sub_c3": "a/p3", "sub_c4": "a/p4",
+            "sub_c0": "a/p0",
+            "sub_c1": "a/p1",
+            "sub_c2": "a/p2",
+            "sub_c3": "a/p3",
+            "sub_c4": "a/p4",
         }
         comp_def = {"type": "hub_control"}
         (tmp_path / "static_inputs.json").write_text(json.dumps(static))
         (tmp_path / "input_mapping.json").write_text(json.dumps(inputs))
         (tmp_path / "component_definition.json").write_text(json.dumps(comp_def))
 
-        with patch.object(hub_federate, "h", mock_helics), \
-             patch("hub_federate.Path") as MockPath:
+        with (
+            patch.object(hub_federate, "h", mock_helics),
+            patch("hub_federate.Path") as MockPath,
+        ):
             MockPath.return_value.parent = tmp_path
 
             mock_fed_instance = MagicMock()
