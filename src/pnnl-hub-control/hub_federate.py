@@ -54,11 +54,11 @@ class ComponentParameters(BaseModel):
 
 
 class Subscriptions(object):
-    c0: CommandList
-    c1: CommandList
-    c2: CommandList
-    c3: CommandList
-    c4: CommandList
+    c0: h.HelicsInput
+    c1: h.HelicsInput
+    c2: h.HelicsInput
+    c3: h.HelicsInput
+    c4: h.HelicsInput
 
 
 class HubFederate(object):
@@ -190,10 +190,10 @@ class HubFederate(object):
 
 
 def run_simulator(broker_config: BrokerConfig):
-    #    schema = ComponentParameters.schema_json(indent=2)
-    #    with open("./hub_control/hub_control_schema.json", "w") as f:
-    #        f.write(schema)
-    #
+    schema = ComponentParameters.schema_json(indent=2)
+    with open("./schema.json", "w") as f:
+        f.write(schema)
+
     sfed = HubFederate(broker_config)
     sfed.run()
 
