@@ -132,7 +132,7 @@ class TestConfigure:
     def _make_component_struct(self, links=None, parameters=None, name="test_comp"):
         """Build a valid ComponentStruct payload."""
         if parameters is None:
-            parameters = {"param1": "value1"}
+            parameters = {"name": name, "t_steps": 1, "max_itr": 10}
         if links is None:
             links = [
                 {
@@ -165,7 +165,8 @@ class TestConfigure:
         with open(tmp_cwd / "static_inputs.json") as f:
             static = json.load(f)
         assert static["name"] == "test_comp"
-        assert static["param1"] == "value1"
+        assert static["t_steps"] == 1
+        assert static["max_itr"] == 10
 
     def test_configure_writes_correct_link_mapping(self, client, tmp_cwd):
         links = [
