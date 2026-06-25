@@ -72,24 +72,24 @@ class HubFederate(object):
         self.register_publication()
 
     def load_component_definition(self) -> None:
-        path = Path(__file__).parent / "component_definition.json"
+        path = Path("component_definition.json")
         with open(path, "r", encoding="UTF-8") as file:
             self.component_config = json.load(file)
 
     def load_input_mapping(self):
-        path = Path(__file__).parent / "input_mapping.json"
+        path = Path("input_mapping.json")
         with open(path, "r", encoding="UTF-8") as file:
             self.inputs = json.load(file)
 
     def load_static_inputs(self):
-        path = Path(__file__).parent / "static_inputs.json"
+        path = Path("static_inputs.json")
         with open(path, "r", encoding="UTF-8") as file:
             config = json.load(file)
 
         self.static = ComponentParameters(
             name=config["name"],
             max_itr=config["max_itr"],
-            t_steps=config["t_steps"],
+            t_steps=config.get("number_of_timesteps", config.get("t_steps")),
         )
 
     def initilize(self, broker_config) -> None:
@@ -124,15 +124,15 @@ class HubFederate(object):
         logger.info(f"Federate executing: {datetime.now()}")
 
         # setting up time properties
-        update_interval = h.helicsFederateGetTimeProperty(
+        update_interval = int(h.helicsFederateGetTimeProperty(
             self.fed, h.HELICS_PROPERTY_TIME_PERIOD
-        )
+        ))
         logger.debug(f"update interval: {update_interval}")
 
         commands = []
         granted_time = 0
         logger.debug("Step 0: Starting Time loop")
-        while granted_time <= self.static.t_steps:
+        while granted_time < self.static.t_steps:
             request_time = granted_time + update_interval
             logger.debug(f"Step 1: Requesting Time {request_time}")
             granted_time = h.helicsFederateRequestTime(self.fed, request_time)

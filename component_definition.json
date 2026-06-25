@@ -1,6 +1,6 @@
 {
     "directory": "hub_control",
-    "execute_function": "python hub_federate.py",
+    "execute_function": "python -m src.pnnl-hub-control.hub_federate",
     "static_inputs": [],
     "dynamic_inputs": [
         {
